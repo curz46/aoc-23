@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+import argparse
+import re
+
+parser = argparse.ArgumentParser(
+    prog="digits.py",
+    description="""
+    Iterate over the lines of an input file, taking the
+    first and last numeric digit of each line, and splicing
+    them together into a two-digit integer.
+
+    If --print is given, print each integer line-by-line.
+
+    If --sum is given, compute the sum of two-digit integers
+    on all lines.
+
+    If --words is given, treat 'one' and 'two' as 1 and 2 respectively.
+
+    If --verbose is given, print extra diagnostic information.
+
+    Example:
+
+    digits INPUT --print
+    """)
+parser.add_argument("file")
+parser.add_argument("-p", "--print", action="store_true")
+parser.add_argument("-s", "--sum", action="store_true")
+parser.add_argument("-w", "--words", action="store_true")
+parser.add_argument("-v", "--verbose", action="store_true")
+args = parser.parse_args()
+
+def vprint(s, *params, **kwparams):
+    if args.verbose:
+        print(s, *params, **kwparams)
+
+words_dict = {
+    "zero":       0,  
+    "one":        1,  
+    "two":        2,  
+    "three":      3,  
+    "four":       4,  
+    "five":       5,  
+    "six":        6,  
+    "seven":      7,  
+    "eight":      8,  
+    "nine":       9,  
+    "ten":        10, 
+    "eleven":     11, 
+    "twelve":     12, 
+    "thirteen":   13, 
+    "fourteen":   14, 
+    "fifteen":    15, 
+    "sixteen":    16, 
+    "seventeen":  17, 
+    "eighteen":   18, 
+    "nineteen":   19, 
+    "twenty":     20, 
+    "thirty":     30, 
+    "fourty":     40, 
+    "fifty":      50, 
+    "sixty":      60, 
+    "seventy":    70, 
+    "eighty":     80, 
+    "ninty":      90
+}
+# Characters might be shared across word boundaries, so we have to be
+# careful about our replacement.
+# E.g. twone should become 21.
+d = dict(words_dict)
+for w1,i1 in d.items():
+    for w2,i2 in d.items():
+        if w1[-1] == w2[0]:
+            key = w1[:-1] + w2
+            val = f"{i1}{i2}"
+            if key in words_dict:
+                vprint(f"Warning: duplicate word {key}!")
+            words_dict[key] = val
+            vprint(f"{key} = {val}")
+# Sort by value length so composites get replaced first
+words = sorted(words_dict, key=len, reverse=True)
+
+def transform_words(string):
+    vprint(f"transform_words({string}) ...")
+    for word in words:
+        n = words_dict[word]
+        string,matches = re.subn(f"{word}", f"{n}", string)
+        if matches > 0:
+            vprint(f"{word} => {n}")
+    return string
+
+def iterate(lines):
+    vprint(f"Iterating on {len(lines)} lines...")
+
+    running_total = 0
+    for line in lines:
+        digits = line.strip()
+        if args.words:
+            digits = transform_words(digits)
+        digits = re.sub(r"[A-z]", "", digits)
+        a = b = 0
+        if len(digits) == 1:
+            a = b = digits
+        elif len(digits) == 2:
+            a,b = digits
+        else:
+            [a, *extra, b] = digits
+        if args.print:
+            print(f"{a}{b}")
+        if args.sum:
+            running_total += 10*int(a) + int(b)
+    return running_total
+
+if __name__ == "__main__":
+    with open(args.file, "r") as f:
+        vprint(f"Opened file {args.file} ...")
+        rt = iterate(f.readlines())
+        if args.sum:
+            print(f"Sum: {rt}")
